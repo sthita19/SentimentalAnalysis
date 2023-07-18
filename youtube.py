@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st, torch
 from datetime import date
 from youtube_microservices import setup, fetch_data, process_data, analyse_data, create_graphs
 
@@ -57,31 +57,35 @@ def youtube():
                 )
 
                 # Cleaning data
-                normalized_transcripts = process_data.execute(transcripts=transcripts)
+                cleaned_transcripts = process_data.execute(transcripts=transcripts)
                 
                 # Analysing data
-                overall_sentiment, sentiment_percentages, non_zero_word_count = analyse_data.execute(normalized_transcripts=normalized_transcripts)
+                # overall_sentiment, sentiment_percentages, non_zero_word_count = analyse_data.execute(normalized_transcripts=normalized_transcripts)
+                sentiment_scores = analyse_data.execute(cleaned_transcripts)
 
-        # Displaying result
-        st.text('Overall sentiment: ' + overall_sentiment.upper())
+        st.markdown('<br></br>', unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center;'>Results</h3>", unsafe_allow_html=True)
+        mean_sentiment_score = torch.mean(torch.tensor(sentiment_scores))
+        overall_sentiment = ''
+        if mean_sentiment_score >= 0.5:
+            overall_sentiment = 'POSITIVE'
+        else:
+            overall_sentiment = 'NEGATIVE'
 
-        # Plotting graphs
-        bar_graph = create_graphs.execute(sentiment_percentages, non_zero_word_count)
+        st.markdown(f"<h4 style='text-align: left;'>Mean Sentiment Score: {mean_sentiment_score.item()}</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='text-align: left;'>Mean Sentiment: {overall_sentiment}</h4>", unsafe_allow_html=True)
 
-        # Creating expander
-        exp = st.expander('View Graphs for better understanding')
-        st.markdown(
-            """
-            <style>
-            body {
-                background-color: #F8F8F8;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-        # Displaying graphs
-        exp.pyplot(bar_graph)
+
+        # Count the number of positive and negative sentiments
+        positive_count = sum(score > 0.5 for score in sentiment_scores)
+        negative_count = sum(score < 0.5 for score in sentiment_scores)
+        
+
+        data = {'Sentiment': ['Positive', 'Negative'], 'Count': [positive_count, negative_count]}
+
+        # Create a bar chart using st.bar_chart
+        st.bar_chart(data, x='Sentiment', y='Count', use_container_width=True)
+
  
-# youtube()
+youtube()
     

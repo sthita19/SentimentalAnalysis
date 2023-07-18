@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 def plot_graph(num_positive, num_negative, num_neutral):
     fig, ax = plt.subplots()
     bar = ax.bar(['Positive', 'Negative', 'Neutral'], [num_positive, num_negative, num_neutral], width = 0.5, align = 'center', color='#FAFAFA')
+    ax.set_title('Sentiment Analysis')
     ax.set_xlabel('Sentiment')
-    ax.set_ylabel('Number of Posts')
-    ax.set_title('Sentiment Analysis of Subreddit')
+    ax.set_ylabel('Count')
     ax.set_facecolor('#0E1117')
     ax.tick_params(axis='x', colors='#0E1117') 
     ax.tick_params(axis='y', colors='#0E1117') 

@@ -1,8 +1,12 @@
 import streamlit as st
 from datetime import date
-import datetime, asyncpraw, asyncio, re
-from transformers import pipeline, RobertaForSequenceClassification, RobertaTokenizer
+import datetime, asyncpraw, asyncio, re, torch
+from transformers import  RobertaForSequenceClassification, RobertaTokenizer
+# from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from reddit_microservices import create_graph
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import pandas as pd
 
 def reddit():
     # st.set_page_config(page_title='Sentiment Analyser - Reddit', page_icon='resources/images/reddit_icon.png', layout='wide')
@@ -58,67 +62,125 @@ def reddit():
 
                 post_contents = []
 
+                st.markdown('<br></br>', unsafe_allow_html=True)
+                st.markdown("<h3 style='text-align: center;'>Post Titles</h3>", unsafe_allow_html=True)
+
                 async for post in posts:
                     if start_time <= datetime.datetime.fromtimestamp(post.created_utc) <= end_time:
                         post_contents.append(post.title + " " + post.selftext)
+                        #print("Title:")
+                        #print(post.title,"\n")
+                        st.text(f"Title: {post.title}\n")
+
 
                 cleaned_contents = []
 
                 # Cleaning data
-                for text in post_contents:
-                    cleaned_text = clean_text(text)
-                    cleaned_contents.append(cleaned_text)
+                st.markdown('<br></br>', unsafe_allow_html=True)
+                st.markdown("<h3 style='text-align: center;'>Text Cleaning Started</h3>", unsafe_allow_html=True)
+                # st.text("Text Cleaning Started")
+
+                # Display the progress bar for text cleaning
+                progress_bar = st.progress(0)
+                progress_text = st.empty()
+
+                with tqdm(total=len(post_contents), desc="Cleaning Text") as pbar:
+                    for i, text in enumerate(post_contents):
+                        cleaned_text = clean_text(text)
+                        cleaned_contents.append(cleaned_text)
+
+                        # Update the progress bar for text cleaning
+                        progress = (i + 1) / len(post_contents)
+                        progress_bar.progress(progress)
+
+                        # Update the progress text for text cleaning
+                        progress_percent = int(progress * 100)
+                        progress_text.text(f"Text Cleaning Progress: {progress_percent}%")
+                        pbar.update(1)
+
+                # st.text("Text Cleaning Done")
+                # st.markdown("<h3 style='text-align: center;'>Text Cleaning Completed</h3>", unsafe_allow_html=True)
 
                 await perform_sentiment_analysis(cleaned_contents)
 
-        # Analysing data using RoBERTa
+                # Analysing data using RoBERTa
         async def perform_sentiment_analysis(cleaned_contents):
+            # st.text(f"Sentimental Analysis Started\n")
+            st.markdown('<br></br>', unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center;'>Sentimental Analysis Started</h3>", unsafe_allow_html=True)
             model = RobertaForSequenceClassification.from_pretrained('roberta-base')
             tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
-            sa_pipeline = pipeline('sentiment-analysis', model=model, tokenizer=tokenizer)
 
-            my_list = cleaned_contents
-
-            outputs = sa_pipeline(my_list)
-
-            sentiments = [output['label'] for output in outputs]
-
-            num_positive = sentiments.count('LABEL_1')
-            num_negative = sentiments.count('LABEL_0')
-            num_neutral = sentiments.count('LABEL_2')
-
-            overall_max = max([num_positive, num_negative, num_neutral])
-            overall_sentiment = ''
-            if overall_max == num_positive:
-                overall_sentiment = 'POSITIVE'
-            elif overall_max == num_negative:
-                overall_sentiment = 'NEGATIVE'
+            if torch.cuda.is_available():
+                device = torch.device("cuda")
             else:
-                overall_sentiment = 'NEUTRAL'
-            
-            # # Displaying result
-            st.text('Overall sentiment: ' + overall_sentiment)
-            
-            # # Plotting graph
-            fig = create_graph.execute(num_positive, num_negative, num_neutral)
+                device = torch.device("cpu")
 
-            # Creating expander
-            exp = st.expander('View Graph for better understanding')
-            st.markdown(
-                """
-                <style>
-                body {
-                    background-color: #F8F8F8;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
-            # Displaying graph
-            exp.pyplot(fig)
-            
-        asyncio.run(main())  
+            sentiment_scores = []
 
-        
+            # Display the progress bar
+            progress_bar = st.progress(0)
+            progress_text = st.empty()
+
+            with tqdm(total=len(cleaned_contents), desc="Performing Sentiment Analysis") as pbar:
+                for i, text in enumerate(cleaned_contents):
+                    text_chunks = [text[i:i + 512] for i in range(0, len(text), 512)]
+                    chunk_scores = []
+
+                    for chunk in text_chunks:
+                        inputs = tokenizer(chunk, truncation=True, padding=True, return_tensors="pt").to(device)
+                        with torch.inference_mode():
+                            model_output = model(**inputs)
+                        logits = model_output.logits
+                        probabilities = torch.softmax(logits, dim=1)
+                        sentiment_score = probabilities[:, 1].item()  # positive sentiment
+                        chunk_scores.append(sentiment_score)
+
+                    average_score = sum(chunk_scores) / len(chunk_scores)
+                    #print(len(chunk_scores))
+
+                    sentiment_scores.append(average_score)
+
+                    # Update the progress bar
+                    progress = (i + 1) / len(cleaned_contents)
+                    progress_bar.progress(progress)
+
+                    # Update the progress text
+                    progress_percent = int(progress * 100)
+                    progress_text.text(f"Sentimental Analysis Progress: {progress_percent}%")
+                    pbar.update(1)
+                # st.text("Sentimental Analysis Done")
+                # st.markdown("<h3 style='text-align: center;'>Sentimental Analysis Completed</h3>", unsafe_allow_html=True)
+            print((sentiment_scores))
+                
+            for i, text in enumerate(cleaned_contents):
+                sentiment_score = sentiment_scores[i]
+                sentiment_label = "Positive" if sentiment_score >= 0.5 else "Negative"
+
+            st.markdown('<br></br>', unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center;'>Results</h3>", unsafe_allow_html=True)
+            mean_sentiment_score = torch.mean(torch.tensor(sentiment_scores))
+            overall_sentiment = ''
+            if mean_sentiment_score >= 0.5:
+                overall_sentiment = 'POSITIVE'
+            else:
+                overall_sentiment = 'NEGATIVE'
+
+            st.markdown(f"<h4 style='text-align: left;'>Mean Sentiment Score: {mean_sentiment_score.item()}</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='text-align: left;'>Mean Sentiment: {overall_sentiment}</h4>", unsafe_allow_html=True)
+
+
+            positive_count = sum(score > 0.5 for score in sentiment_scores)
+            negative_count = sum(score < 0.5 for score in sentiment_scores)
+
+            data = {'Sentiment': ['Positive', 'Negative'], 'Count': [positive_count, negative_count]}
+            df = pd.DataFrame(data)  # Create a DataFrame from the data dictionary
+
+            # Create a bar chart using st.bar_chart
+            st.bar_chart(df, x='Sentiment', y='Count', use_container_width=True)
+            
+            
+        asyncio.run(main())         
+ 
 
 # reddit()

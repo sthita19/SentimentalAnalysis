@@ -11,7 +11,7 @@ def get_channel_id(youtube, channel_name):
             part='id',
             q=channel_name,
             type='channel',
-            maxResults=1
+            maxResults=1,
         ).execute()
 
         # Get the channel ID from the search results
@@ -38,7 +38,7 @@ def get_video_urls(youtube, channel_id, start_date, end_date):
             playlist_response = youtube.search().list(
                 part='id',
                 channelId=channel_id,
-                maxResults=50,
+                maxResults=25,
                 publishedAfter=start_date_str + 'T00:00:00Z',
                 publishedBefore=end_date_str + 'T23:59:59Z',
                 pageToken=next_page_token
