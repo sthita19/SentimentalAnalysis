@@ -1,18 +1,9 @@
 import streamlit as st, torch
 from datetime import date
-from youtube_microservices import setup, fetch_data, process_data, analyse_data, create_graphs
+from youtube_microservices import setup, fetch_data, process_data, analyse_data
 
 
 def youtube():
-    # st.set_page_config(page_title='Sentiment Analyser - YouTube', page_icon='resources/images/yt_icon.png', layout='wide')
-
-
-    # For the first time use, please uncomment the below lines to download the required resources
-    # Also make sure to import nltk
-    # nltk.download('vader_lexicon')
-    # nltk.download('punkt')
-    # nltk.download('stopwords')
-    # nltk.download('wordnet')
     
     # Title & Icon
     _, col1, col2 = st.columns([2.2, 0.45, 3])
@@ -43,25 +34,28 @@ def youtube():
 
     # Button Functionality
     if analyse:
-        _, cl, _ = st.columns([2.4,1,2])
-        with cl:
-            with st.spinner('Please wait...'):
-                youtube = setup.execute()
-                
-                # Fetching data
-                transcripts = fetch_data.execute(
-                    youtube=youtube,
-                    channel_name=channel_name, 
-                    start_date=start_date, 
-                    end_date=end_date
-                )
+        st.markdown('<br></br>', unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center;'>Fetching Data</h3>", unsafe_allow_html=True)
+        youtube = setup.execute()
+        
+        # Fetching data
+        transcripts = fetch_data.execute(
+            youtube=youtube,
+            channel_name=channel_name, 
+            start_date=start_date, 
+            end_date=end_date
+        )
 
-                # Cleaning data
-                cleaned_transcripts = process_data.execute(transcripts=transcripts)
-                
-                # Analysing data
-                # overall_sentiment, sentiment_percentages, non_zero_word_count = analyse_data.execute(normalized_transcripts=normalized_transcripts)
-                sentiment_scores = analyse_data.execute(cleaned_transcripts)
+        # Cleaning data
+        st.markdown('<br></br>', unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center;'>Cleaning Transcripts</h3>", unsafe_allow_html=True)
+        cleaned_transcripts = process_data.execute(transcripts=transcripts)
+        
+        # Analysing data
+        # overall_sentiment, sentiment_percentages, non_zero_word_count = analyse_data.execute(normalized_transcripts=normalized_transcripts)
+        st.markdown('<br></br>', unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center;'>Analysing Transcripts</h3>", unsafe_allow_html=True)
+        sentiment_scores = analyse_data.execute(cleaned_transcripts)
 
         st.markdown('<br></br>', unsafe_allow_html=True)
         st.markdown("<h3 style='text-align: center;'>Results</h3>", unsafe_allow_html=True)
@@ -87,5 +81,5 @@ def youtube():
         st.bar_chart(data, x='Sentiment', y='Count', use_container_width=True)
 
  
-youtube()
+# youtube()
     

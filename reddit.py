@@ -2,14 +2,11 @@ import streamlit as st
 from datetime import date
 import datetime, asyncpraw, asyncio, re, torch
 from transformers import  RobertaForSequenceClassification, RobertaTokenizer
-# from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from reddit_microservices import create_graph
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pandas as pd
 
 def reddit():
-    # st.set_page_config(page_title='Sentiment Analyser - Reddit', page_icon='resources/images/reddit_icon.png', layout='wide')
 
     # Title & Icon
     _, col1, col2 = st.columns([2.3, 0.45, 3])
@@ -68,8 +65,7 @@ def reddit():
                 async for post in posts:
                     if start_time <= datetime.datetime.fromtimestamp(post.created_utc) <= end_time:
                         post_contents.append(post.title + " " + post.selftext)
-                        #print("Title:")
-                        #print(post.title,"\n")
+                        
                         st.text(f"Title: {post.title}\n")
 
 
@@ -77,8 +73,8 @@ def reddit():
 
                 # Cleaning data
                 st.markdown('<br></br>', unsafe_allow_html=True)
-                st.markdown("<h3 style='text-align: center;'>Text Cleaning Started</h3>", unsafe_allow_html=True)
-                # st.text("Text Cleaning Started")
+                st.markdown("<h3 style='text-align: center;'>Cleaning Text</h3>", unsafe_allow_html=True)
+                
 
                 # Display the progress bar for text cleaning
                 progress_bar = st.progress(0)
@@ -95,19 +91,17 @@ def reddit():
 
                         # Update the progress text for text cleaning
                         progress_percent = int(progress * 100)
-                        progress_text.text(f"Text Cleaning Progress: {progress_percent}%")
+                        progress_text.text(f"Cleaning Text: {progress_percent}%")
                         pbar.update(1)
 
-                # st.text("Text Cleaning Done")
-                # st.markdown("<h3 style='text-align: center;'>Text Cleaning Completed</h3>", unsafe_allow_html=True)
-
+                
                 await perform_sentiment_analysis(cleaned_contents)
 
                 # Analysing data using RoBERTa
         async def perform_sentiment_analysis(cleaned_contents):
-            # st.text(f"Sentimental Analysis Started\n")
+            
             st.markdown('<br></br>', unsafe_allow_html=True)
-            st.markdown("<h3 style='text-align: center;'>Sentimental Analysis Started</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center;'>Analysing Text</h3>", unsafe_allow_html=True)
             model = RobertaForSequenceClassification.from_pretrained('roberta-base')
             tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
 
@@ -122,7 +116,7 @@ def reddit():
             progress_bar = st.progress(0)
             progress_text = st.empty()
 
-            with tqdm(total=len(cleaned_contents), desc="Performing Sentiment Analysis") as pbar:
+            with tqdm(total=len(cleaned_contents), desc="Analysing Text") as pbar:
                 for i, text in enumerate(cleaned_contents):
                     text_chunks = [text[i:i + 512] for i in range(0, len(text), 512)]
                     chunk_scores = []
@@ -147,11 +141,9 @@ def reddit():
 
                     # Update the progress text
                     progress_percent = int(progress * 100)
-                    progress_text.text(f"Sentimental Analysis Progress: {progress_percent}%")
+                    progress_text.text(f"Analysing Text: {progress_percent}%")
                     pbar.update(1)
-                # st.text("Sentimental Analysis Done")
-                # st.markdown("<h3 style='text-align: center;'>Sentimental Analysis Completed</h3>", unsafe_allow_html=True)
-            print((sentiment_scores))
+                
                 
             for i, text in enumerate(cleaned_contents):
                 sentiment_score = sentiment_scores[i]

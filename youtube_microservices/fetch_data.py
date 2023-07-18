@@ -2,6 +2,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from datetime import datetime
 from langchain.document_loaders import YoutubeLoader
+import streamlit as st
+import tqdm
+from tqdm import tqdm
 
 def get_channel_id(youtube, channel_name):
     channel_id = ''
@@ -36,7 +39,7 @@ def get_video_urls(youtube, channel_id, start_date, end_date):
         next_page_token = ''
         while True:
             playlist_response = youtube.search().list(
-                part='id',
+                part='snippet',
                 channelId=channel_id,
                 maxResults=25,
                 publishedAfter=start_date_str + 'T00:00:00Z',
@@ -46,7 +49,10 @@ def get_video_urls(youtube, channel_id, start_date, end_date):
 
             for item in playlist_response['items']:
                 if item['id']['kind'] == 'youtube#video':
+                    
                     video_id = item['id']['videoId']
+                    video_title = item['snippet']['title']
+                    st.text(f'Title: {video_title}')
                     video_url = f'https://www.youtube.com/watch?v={video_id}'
                     video_urls.append(video_url)
 
@@ -54,6 +60,7 @@ def get_video_urls(youtube, channel_id, start_date, end_date):
                 next_page_token = playlist_response['nextPageToken']
             else:
                 break
+            
 
     except HttpError as e:
         print(f'An HTTP error {e.resp.status} occurred: {e.content}')
@@ -62,15 +69,30 @@ def get_video_urls(youtube, channel_id, start_date, end_date):
 
 # Getting transcripts from video urls
 def get_transcripts(video_urls):
+    progress_bar = st.progress(0)
+    progress_text = st.empty()
+
     transcripts = []
-    for video_url in video_urls:
-        loader = YoutubeLoader.from_youtube_url(
-            video_url, add_video_info=True, language=['en', 'en-IN', 'hi'], translation='en'
-        )
-        transcript = loader.load()
-        if transcript:
-            transcript_content = transcript[0].page_content
-            transcripts.append(transcript_content)
+    i = 0
+    with tqdm(total=len(video_urls), bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
+        for video_url in video_urls:
+            loader = YoutubeLoader.from_youtube_url(
+                video_url, add_video_info=True, language=['en', 'en-IN', 'hi'], translation='en'
+            )
+            transcript = loader.load()
+            if transcript:
+                transcript_content = transcript[0].page_content
+                transcripts.append(transcript_content)
+            
+            # Update the progress bar
+            progress = (i + 1) / len(video_urls)
+            progress_bar.progress(progress)
+
+            progress_percent = int(progress * 100)
+            progress_text.text(f"Progress: {progress_percent}%")
+            pbar.update(1)
+            i += 1
+
 
     return transcripts
 
@@ -78,5 +100,8 @@ def get_transcripts(video_urls):
 def execute(youtube, channel_name, start_date, end_date):
     channel_id = get_channel_id(youtube=youtube, channel_name=channel_name)
     video_urls = get_video_urls(youtube=youtube, channel_id=channel_id, start_date=start_date, end_date=end_date)
+
+    
+
     transcripts = get_transcripts(video_urls=video_urls)
     return transcripts
