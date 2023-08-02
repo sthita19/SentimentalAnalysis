@@ -97,5 +97,6 @@ urllib3==1.26.16
 validators==0.20.0
 watchdog==3.0.0
 yarl==1.9.2
+youtube-transcript-api==0.6.1
 zipp==3.16.2
 zope.interface==6.0
