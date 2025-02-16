@@ -77,7 +77,7 @@ def get_transcripts(video_urls):
     with tqdm(total=len(video_urls), bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
         for video_url in video_urls:
             loader = YoutubeLoader.from_youtube_url(
-                video_url, add_video_info=True, language=['en', 'en-IN', 'hi'], translation='en'
+                video_url, add_video_info=False, language=['en', 'en-IN', 'hi'], translation='en'
             )
             transcript = loader.load()
             if transcript:
