@@ -20,7 +20,7 @@ def analyse(cleaned_transcripts):
 
     with tqdm(total=len(cleaned_transcripts), bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
         for i, text in enumerate(cleaned_transcripts):
-            text_chunks = [text[i:i + 512] for i in range(0, len(text), 512)]
+            text_chunks = [text[j:j+512] for j in range(0, len(text), 512)]
             chunk_scores = []
 
             for chunk in text_chunks:
